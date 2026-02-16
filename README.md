@@ -1,4 +1,3 @@
-```markdown
 # EtherDFS Server for Docker
 
 A lightweight, containerized version of the **EtherDFS Server** (`ethersrv-linux`), designed to run on NAS systems like **TrueNAS Scale**.
@@ -133,10 +132,7 @@ This repository includes a `build.sh` script to compile the latest version of `e
 
 ## 📜 Credits
 
-* **Original Author:** [Mateusz Viste]()
-* **Linux Port/Fork:** [Michael Ortmann & oerg866]()
+* **Original Author:** [Mateusz Viste](http://etherdfs.sourceforge.net/)
+* **Linux Port/Fork:** [Michael Ortmann & oerg866](https://github.com/oerg866/ethersrv-866)
 * **Dockerization:** Maintained by MegaPearl.
-
-```
-
 ```

@@ -1,8 +1,11 @@
 /*
- * This file is part of the ethersrv-linux project
+ * This file is part of the ethersrv project
  * Copyright (C) 2017 Mateusz Viste
+ * Copyright (C) 2020 Michael Ortmann
+ * Copyright (C) 2023-2025 E. Voirin (oerg866)
  */
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -16,16 +19,35 @@
 #include <string.h>
 #include <time.h>        /* time_t, struct tm... */
 #include <unistd.h>
-#include <linux/msdos_fs.h>
+#if defined(__FreeBSD__) || defined(__APPLE__)
+  #include <sys/mount.h> /* statfs() */
+#else
+  #include <linux/msdos_fs.h>
+  #include <sys/vfs.h>   /* struct statfs */
+#endif
 #include <sys/ioctl.h>
+#include <string.h>
 
 #include "debug.h"
 #include "fs.h" /* include self for control */
 
+/* macOS doesn't have all the FreeBSD file flags, define missing ones */
+#ifdef __APPLE__
+  #ifndef UF_READONLY
+    #define UF_READONLY UF_IMMUTABLE  /* Use immutable flag for readonly */
+  #endif
+  #ifndef UF_SYSTEM
+    #define UF_SYSTEM 0  /* Not supported on macOS */
+  #endif
+  #ifndef UF_ARCHIVE
+    #define UF_ARCHIVE 0  /* Not supported on macOS */
+  #endif
+#endif
+
 /* database containing file/dir identifiers and their names - this is used
- * whenever ethersrv-linux needs to provide etherdfs with a 16bit identifier
- * that etherdfs will subsequently use to refer to this file or dir (typically
- * used during FindFirst+FindNext steps and Open/Create+Write/Read.
+ * whenever ethersrv needs to provide etherdfs with a 16bit identifier that
+ * etherdfs will subsequently use to refer to this file or dir (typically used
+ * during FindFirst+FindNext steps and Open/Create+Write/Read.
  * the struct may also contain an entire directory listing computed by FFirst
  * (and used then by FNext) */
 static struct sfsdb {
@@ -81,6 +103,7 @@ unsigned short getitemss(char *f) {
   }
   /* register it */
   fsdb[firstfree].name = strdup(f);
+
   if (fsdb[firstfree].name == NULL) {
     fprintf(stderr, "ERROR: OUT OF MEM!\n");
     return(0xffffu);
@@ -99,21 +122,39 @@ char upchar(char c) {
   return(c);
 }
 
+/* turns a string into all-upper-case characters, up to n chars max */
+static void upstring(char *s, int n) {
+  while ((n-- != 0) && (*s != 0)) {
+    *s = upchar(*s);
+    s++;
+  }
+}
+
 /* translates a filename string into a fcb-style block ("FILE0001TXT") */
 void filename2fcb(char *d, char *s) {
   int i;
+  int j;
   /* fill the FCB block with spaces */
   for (i = 0; i < 11; i++) d[i] = ' ';
+
   /* cover '.' and '..' entries */
   for (i = 0; i < 8; i++) {
     if (s[i] != '.') break;
     d[i] = '.';
   }
+  
   /* fill in the filename, up to 8 chars or first dot, whichever comes first */
+  j = i;
+
   for (; i < 8; i++) {
-    if ((s[i] == '.') || (s[i] == 0)) break;
-    d[i] = upchar(s[i]);
+    if ((s[j] == '.') || (s[j] == 0)) break;
+    while ((s[j]) == ' ') {
+      j++;
+    }
+    d[i] = upchar(s[j]);
+    j++;
   }
+
   s += i;
   /* fast forward to either the first dot or NULL-terminator */
   for (; ((*s != '.') && (*s != 0)); s++);
@@ -121,9 +162,9 @@ void filename2fcb(char *d, char *s) {
   s++; /* skip the dot */
   /* fill in the extension */
   d += 8;
-  for (i = 0; i < 3; i++) {
-    if ((s[i] == '.') || (s[i] == 0)) break;
-    *d = upchar(s[i]);
+  for (j = 0; j < 3; j++) {
+    if ((s[j] == '.') || (s[j] == 0) || (s[j] == ' ')) break;
+    *d = upchar(s[j]);
     d++;
   }
 }
@@ -170,7 +211,9 @@ static int matchfile2mask(char *msk, char *fil) {
  * DOS attr flags: 1=RO 2=HID 4=SYS 8=VOL 16=DIR 32=ARCH 64=DEVICE */
 unsigned char getitemattr(char *i, struct fileprops *fprops, unsigned char fatflag) {
   uint32_t attr;
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
   int fd;
+#endif
   struct stat statbuf;
   if (stat(i, &statbuf) != 0) return(0xff); /* error (probably doesn't exist) */
   /* zero out fprops and fill it out */
@@ -188,13 +231,26 @@ unsigned char getitemattr(char *i, struct fileprops *fprops, unsigned char fatfl
   }
   /* is this is a directory? */
   if (S_ISDIR(statbuf.st_mode)) {
-    if (fprops != NULL) fprops->fattr = 16;
+    if (fprops != NULL) fprops->fattr = 16; /* ATTR_DIR */
     return(16);
   }
   /* not a directory, set size */
   if (fprops != NULL) fprops->fsize = statbuf.st_size;
   /* if not a FAT drive, return a fake attribute of 0x20 (archive) */
   if (fatflag == 0) return(0x20);
+#if defined(__FreeBSD__) || defined(__APPLE__)
+  {
+    /* map FreeBSD to Linux */
+    attr = 0;
+    if (statbuf.st_flags & UF_READONLY)
+      attr |= 1;  /* ATTR_RO */
+    if (statbuf.st_flags & UF_HIDDEN)
+      attr |= 2;  /* ATTR_HIDDEN */
+    if (statbuf.st_flags & UF_SYSTEM)
+      attr |= 4;  /* ATTR_SYS */
+    if (statbuf.st_flags & UF_ARCHIVE)
+      attr |= 32; /* ATTR_ARCH */
+#else
   /* try to fetch DOS attributes by calling the FAT IOCTL API */
   fd = open(i, O_RDONLY);
   if (fd == -1) return(0xff);
@@ -204,6 +260,7 @@ unsigned char getitemattr(char *i, struct fileprops *fprops, unsigned char fatfl
     return(0);
   } else {
     close(fd);
+#endif
     if (fprops != NULL) fprops->fattr = attr;
     return(attr);
   }
@@ -211,11 +268,25 @@ unsigned char getitemattr(char *i, struct fileprops *fprops, unsigned char fatfl
 
 /* set attributes fattr on file i. returns 0 on success, non-zero otherwise. */
 int setitemattr(char *i, unsigned char fattr) {
-  int fd, res;
-  fd = open(i, O_RDONLY);
+  int res;
+#if defined(__FreeBSD__) || defined(__APPLE__)
+  /* map Linux to FreeBSD */
+  unsigned long flags = 0;
+  if (fattr & 1)  /* ATTR_RO */
+    flags |= UF_READONLY;
+  if (fattr & 2)  /* ATTR_HIDDEN */
+    flags |= UF_HIDDEN;
+  if (fattr & 4)  /* ATTR_SYS */
+    flags |= UF_SYSTEM;
+  if (fattr & 32) /* ATTR_ARCH */
+    flags |= UF_ARCHIVE;
+  res = chflags(i, flags);
+#else
+  int fd = open(i, O_RDONLY);
   if (fd == -1) return(-1);
   res = ioctl(fd, FAT_IOCTL_SET_ATTRIBUTES, &fattr);
   close(fd);
+#endif
   if (res < 0) return(-1);
   return(0);
 }
@@ -283,6 +354,7 @@ int findfile(struct fileprops *f, unsigned short dss, char *fcbtmpl, unsigned ch
     if (n <= *nth) continue;
     /* skip '.' and '..' items if directory is root */
     if ((dirlist->fprops.fcbname[0] == '.') && (flags & FFILE_ISROOT)) continue;
+
     /* if no match, continue */
     if (matchfile2mask(fcbtmpl, dirlist->fprops.fcbname) != 0) continue;
     /* do attributes match? (return only items with AT MOST the specified combination of hidden, system, and directory attributes if no VOL bit set, otherwise look for VOL only.
@@ -459,16 +531,17 @@ int renfile(char *fn1, char *fn2) {
 
 /* checks if a path resides on a FAT filesystem, returns 0 if so, non-zero otherwise */
 int isfat(char *d) {
-  int fd;
-  uint32_t volid;
-  /* test if I can fetch the serial id through calling the FAT IOCTL API */
-  fd = open(d, O_RDONLY);
-  if (fd == -1) return(-1);
-  if (ioctl(fd, FAT_IOCTL_GET_VOLUME_ID, &volid) < 0) {
-    close(fd);
+  struct statfs buf;
+  if (statfs(d, &buf) < 0) {
+    DBG("Error: statfs(): %s\n", strerror(errno)); 
     return(-1);
   }
-  close(fd);
+#if defined(__FreeBSD__) || defined(__APPLE__)
+  if (strcmp(buf.f_fstypename, "msdosfs"))
+#else
+  if (buf.f_type != MSDOS_SUPER_MAGIC)
+#endif
+    return(-1);
   return(0);
 }
 
@@ -479,4 +552,107 @@ long getfopsize(unsigned short fss) {
   if (fname == NULL) return(-1);
   if (getitemattr(fname, &fprops, 0) == 0xff) return(-1);
   return(fprops.fsize);
+}
+
+
+/**/
+int shorttolong(char *dst, char *src, const char *root) {
+  int found = 0;
+
+  char *writeptr = dst;
+  char *tmpdir = NULL;
+  char *tmpdir_next = NULL;
+  char to_find_fcb [12];
+  char tmp_fcb [12];
+
+  struct dirent *entry;
+  DIR *dir;
+
+  size_t root_len = strlen(root);
+
+  to_find_fcb[11] = 0;  /* null terminate these */
+  tmp_fcb[11] = 0;
+
+  assert(strncmp(root, src, strlen(root)) == 0);
+
+  src += root_len;
+  writeptr += sprintf(dst, "%s/", root);
+
+  printf("shorttolong: %s %s %s\n", dst, src, root);
+
+  if (src[0] != '/') {
+    DBG("ERROR: invalid string for shorttolong encountered: '%s'\n", src);
+    return -1;
+  }
+
+  src++;
+
+  /* get the first token */
+  tmpdir = strtok(src, "/");
+   
+  /* walk through other tokens */
+  while (tmpdir != NULL) {
+    
+    tmpdir_next = strtok(NULL, "/");
+
+    /* Turn this back into an FCB string */
+    filename2fcb(to_find_fcb, tmpdir);
+
+    /* Walk the current directory depicted by destination */
+
+    dir = opendir(dst);
+
+    if (dir == NULL) {
+      DBG("ERROR: Failed to open directory %s", dst);
+      return -1;
+    }
+
+    found = 0;
+
+    while (!found && (entry = readdir(dir)) != NULL) {
+      if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))
+        continue;
+
+      /* get FCB name for this */
+      filename2fcb(tmp_fcb, entry->d_name);
+
+      /*if if its fcb name matches what we are trying to find, this may be our destination. */
+
+      if (strcmp(tmp_fcb, to_find_fcb) == 0) {
+        /*if we're not in the last section of the input path, this must be a directory*/
+
+        if ((tmpdir_next != NULL) && (entry->d_type != DT_DIR)) {
+          DBG("The name matched but isnt a directory.\n");
+          continue;
+        }
+
+        writeptr += sprintf(writeptr, "%s", entry->d_name);
+
+        /* it is a directory, so we must append a / to our destination */
+        if (tmpdir_next != NULL) {
+          writeptr += sprintf(writeptr, "/");
+        }
+
+        found = 1;
+
+      }
+
+    }
+
+    closedir(dir);
+
+    if (!found) {
+      /* Print the raw version as is to the destination string. Is useful for mkdir. */
+      writeptr += sprintf(writeptr, "%s", tmpdir);
+
+      DBG("Part of the path was not found - ergo it does not exist.\n");
+      return -1;
+    }
+
+    tmpdir = tmpdir_next;
+  }
+
+  DBG("shorttolong RESULT: %s\n", dst);
+
+  return 0;
 }

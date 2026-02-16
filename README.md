@@ -16,14 +16,14 @@ EtherDFS operates on raw Ethernet frames (EtherType `0xEDF5`). It **does not use
 ```yaml
 services:
   etherdfs:
-    image: ghcr.io/YOUR_GITHUB_USER/etherdfs-docker:latest
-    container_name: etherdfs
+    image: ghcr.io/megapearl/etherdfs:latest
+    container_name: etherdfs-server
     network_mode: host
     cap_add:
       - NET_RAW
       - NET_ADMIN
     volumes:
-      - /mnt/tank/dos_games:/data
+      - /mnt/tank/retro:/data
     # Syntax: ethersrv-linux <HOST_INTERFACE> <CONTAINER_PATH>
-    command: ethersrv-linux eno1 /data
+    command: ethersrv-linux vlan2 /data
     restart: unless-stopped

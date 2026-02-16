@@ -1,6 +1,6 @@
 # EtherDFS Server for Docker
 
-This is a containerized version of [EtherDFS](http://etherdfs.sourceforge.net/) (ethersrv-linux), designed to run on NAS systems like TrueNAS Scale.
+This is a containerized version of [EtherDFS](http://etherdfs.sourceforge.net/) (ethersrv-linux) based on [EtherSRV-666] (https://github.com/oerg866/ethersrv-866) designed to run on NAS systems like TrueNAS Scale.
 
 EtherDFS creates a Layer 2 (Raw Ethernet) drive mapping for MS-DOS clients.
 

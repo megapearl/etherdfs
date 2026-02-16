@@ -6,11 +6,8 @@ RUN apk add --no-cache gcc make musl-dev linux-headers
 COPY . /opt/etherdfs
 WORKDIR /opt/etherdfs
 
-# Fix conflicting headers
-RUN sed -i 's/#include <linux\/if_ether.h>/\/\/ #include <linux\/if_ether.h>/' ethersrv-linux.c
-
 # Build and install
-RUN make && cp ethersrv-linux /usr/local/bin/ && chmod +x /usr/local/bin/ethersrv-linux
+RUN make && cp ethersrv /usr/local/bin/ && chmod +x /usr/local/bin/ethersrv
 
 # Cleanup
 RUN apk del gcc make musl-dev linux-headers && rm -rf /opt/etherdfs
@@ -29,6 +26,6 @@ CMD ["sh", "-c", "\
   fi; \
     echo \"[INIT] Interface selected: $0\"; \
     echo \"[INIT] Data path selected: $1\"; \
-    echo '[EXEC] Launching ethersrv-linux...'; \
-    exec /usr/local/bin/ethersrv-linux -f \"$0\" \"$1\" \
+    echo '[EXEC] Launching ethersrv...'; \
+    exec /usr/local/bin/ethersrv -f \"$0\" \"$1\" \
 "]

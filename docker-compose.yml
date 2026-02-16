@@ -13,5 +13,5 @@ services:
       - /mnt/storage/retro:/data
     # Command syntax: ./ethersrv-linux [interface] [root_path]
     # Replace 'eno1' with your actual TrueNAS network interface
-    command: ./ethersrv-linux vlan2 /data
+    command: ./ethersrv vlan2 /data
     restart: unless-stopped

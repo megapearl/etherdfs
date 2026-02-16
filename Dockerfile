@@ -18,7 +18,7 @@ RUN apk del gcc make musl-dev linux-headers && rm -rf /opt/etherdfs
 RUN mkdir -p /data
 VOLUME /data
 
-# English logging and startup sequence
+# Logging and startup sequence
 CMD ["sh", "-c", "\
     echo '[INIT] Starting EtherDFS Docker container...'; \
     echo '[INIT] Cleaning up old lock files...'; \
@@ -30,5 +30,5 @@ CMD ["sh", "-c", "\
     echo \"[INIT] Interface selected: $0\"; \
     echo \"[INIT] Data path selected: $1\"; \
     echo '[EXEC] Launching ethersrv-linux...'; \
-    exec /usr/local/bin/ethersrv-linux \"$0\" \"$1\" \
+    exec /usr/local/bin/ethersrv-linux -f \"$0\" \"$1\" \
 "]

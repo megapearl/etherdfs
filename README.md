@@ -1,3 +1,4 @@
+```markdown
 # EtherDFS Server for Docker
 
 A lightweight, containerized version of the **EtherDFS Server** (`ethersrv-linux`), designed to run on NAS systems like **TrueNAS Scale**.
@@ -9,10 +10,10 @@ EtherDFS creates a **Layer 2 (Raw Ethernet)** drive mapping for MS-DOS clients. 
 
 ```mermaid
 graph TD
-    A[MS-DOS PC] -- Raw Ethernet Frames (0xEDF5) --> B(Network Switch)
-    B -- Raw Ethernet Frames --> C[TrueNAS Interface (eno1/vlan2)]
-    C -- Host Networking --> D[Docker Container]
-    D -- Bind Mount --> E[ZFS Dataset]
+    A[MS-DOS PC] -- "Raw Ethernet Frames (0xEDF5)" --> B(Network Switch)
+    B -- "Raw Ethernet Frames" --> C["TrueNAS Interface (eno1/vlan2)"]
+    C -- "Host Networking" --> D[Docker Container]
+    D -- "Bind Mount" --> E[ZFS Dataset]
 
 ```
 
@@ -49,7 +50,7 @@ services:
     # -f      : Keep in foreground (Required for Docker!)
     # vlan2   : Replace with your interface (check with 'ip addr')
     # /data   : The internal mount path
-    command: ethersrv -f vlan2 /data
+    command: /usr/local/bin/ethersrv -f vlan2 /data
     restart: unless-stopped
 
 ```
@@ -132,8 +133,8 @@ This repository includes a `build.sh` script to compile the latest version of `e
 
 ## 📜 Credits
 
-* **Original Author:** [Mateusz Viste](http://etherdfs.sourceforge.net/)
-* **Linux Port/Fork:** [Michael Ortmann & oerg866](https://github.com/oerg866/ethersrv-866)
+* **Original Author:** [Mateusz Viste]()
+* **Linux Port/Fork:** [Michael Ortmann & oerg866]()
 * **Dockerization:** Maintained by MegaPearl.
 
 ```

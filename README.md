@@ -1,6 +1,6 @@
 # EtherDFS Server for Docker
 
-A lightweight, containerized version of the **EtherDFS Server** (`ethersrv-linux`), designed to run on NAS systems like **TrueNAS Scale**.
+A lightweight, containerized version of the **EtherDFS Server** (`ethersrv`), designed to run on NAS systems like **TrueNAS Scale**.
 
 This image is built from the [oerg866/ethersrv-866](https://github.com/oerg866/ethersrv-866) fork, which is an actively maintained version of the original [EtherDFS by Mateusz Viste](http://etherdfs.sourceforge.net/).
 
@@ -74,11 +74,9 @@ This is almost always a **Permissions** issue on the Host (TrueNAS).
 * **Fix:** Ensure the underlying dataset is readable.
 ```bash
 # Run on TrueNAS Shell
-chmod -R 755 /mnt/tank/retro/dos_games
+chmod -R 755 /mnt/tank/retro
 
 ```
-
-
 
 ### 2. "Unknown drive" or Connection Drops
 
@@ -103,36 +101,21 @@ On your vintage PC, you need two things:
 ```bat
 @ECHO OFF
 REM 1. Load your packet driver (vector 0x60 is standard)
-C:\NET\NE2000.COM 0x60 10 0x300
+C:\APPS\NET\3C509.COM 0x60
 
 REM 2. Load EtherDFS (automatically finds the server)
-REM Syntax: ETHERDFS :: [LocalDriveLetter]
-C:\NET\ETHERDFS.EXE ::
+REM Syntax: ETHERDFS SRVMAC rdrv-ldrv
+C:\APPS\ETHERDFS\ETHERDFS.EXE :: C-E
 
 ```
 
 If successful, you will see:
-`EtherDFS 0.8.2: Drive E: is now mounted to 00:11:22:33:44:55`
-
-## 🏗️ Building from Source
-
-This repository includes a `build.sh` script to compile the latest version of `ethersrv-linux` from source within an Alpine container.
-
-**Requirements:**
-
-* Docker Buildx
-* A `.env` file with `GITHUB_TOKEN` (needs `write:packages` scope).
-
-**Build Command:**
-
-```bash
-./scripts/builddocker.sh etherdfs --force --tag=v0.1.3
-
-```
+`EtherDFS v0.8.3 installed (local MAC 00:A0:24:99:7E:7A, pktdrvr at INT 60)`
+`E: -> [C:] on 00:50:56:85:89:9D`
 
 ## 📜 Credits
 
-* **Original Author:** [Mateusz Viste](http://etherdfs.sourceforge.net/)
-* **Linux Port/Fork:** [Michael Ortmann & oerg866](https://github.com/oerg866/ethersrv-866)
-* **Dockerization:** Maintained by MegaPearl.
+* **Original Author:** [Mateusz Viste](https://etherdfs.sourceforge.net/)
+* **Linux/FreeBSD Fork:** [Michael Ortmann](https://github.com/oerg866/ethersrv-866/)
+* **Dockerization:** [Donald Flissinger](https://github.com/megapearl/etherdf/)
 ```

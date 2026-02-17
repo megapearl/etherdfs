@@ -47,6 +47,7 @@ services:
       - /mnt/tank/retro/dos_games:/data
     # Command Syntax: ethersrv -f <INTERFACE> <PATH_WITHOUT_TRAILING_SLASH>
     # -f      : Keep in foreground (Required for Docker!)
+    # -v      : Verbose mode (Optional, enables debug logs)
     # vlan2   : Replace with your interface (check with 'ip addr')
     # /data   : The internal mount path
     command: /usr/local/bin/ethersrv -f vlan2 /data
@@ -61,6 +62,7 @@ The entrypoint allows you to pass arguments directly to `ethersrv`:
 | Argument | Description |
 | --- | --- |
 | `-f` | **Mandatory.** Runs the server in the foreground. Without this, the container will exit immediately. |
+| `-v` | **Optional.** Enables Verbose/Debug logging to stderr. Use this only for troubleshooting; it slows down performance. |
 | `<interface>` | The network interface name on the host (e.g., `eth0`, `vlan2`). |
 | `<path>` | The directory to serve. **Do not use a trailing slash** (e.g., use `/data`, not `/data/`). |
 
@@ -117,5 +119,4 @@ If successful, you will see:
 
 * **Original Author:** [Mateusz Viste](https://etherdfs.sourceforge.net/)
 * **Linux/FreeBSD Fork:** [Michael Ortmann](https://github.com/oerg866/ethersrv-866/)
-* **Dockerization:** [Donald Flissinger](https://github.com/megapearl/etherdf/)
-```
+* **Dockerization:** [Donald Flissinger](https://github.com/megapearl/etherdfs/)

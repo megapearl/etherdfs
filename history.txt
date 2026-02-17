@@ -1,4 +1,4 @@
-History file of ethersrv-866
+History file of etherdfs
 
 20250325:
  - Fixed a bunch of more problems with host<->client file/path name handling

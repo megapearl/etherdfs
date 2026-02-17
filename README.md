@@ -2,7 +2,14 @@
 
 A lightweight, containerized version of the **EtherDFS Server** (`ethersrv`), designed to run on NAS systems like **TrueNAS Scale**.
 
-This image is built from the [oerg866/ethersrv-866](https://github.com/oerg866/ethersrv-866) fork, which is an actively maintained version of the original [EtherDFS by Mateusz Viste](http://etherdfs.sourceforge.net/).
+This repository hosts a **heavily optimized fork** based on [oerg866/ethersrv-866](https://github.com/oerg866/ethersrv-866).
+which is an actively maintained version of the original [EtherDFS by Mateusz Viste](http://etherdfs.sourceforge.net/).
+
+## ⚡ Key Improvements in this Version
+* **Turbo Performance:** Debug logging is disabled by default (compile-time macros removed), resulting in massive speed improvements for directory listing and file transfers.
+* **Runtime Debugging:** Added a `-v` flag to enable verbose logging only when needed, without rebuilding.
+* **Static Compilation:** The binary is statically linked (`-static`), ensuring it runs on any Linux distribution (Alpine, Debian, TrueNAS) without dependency hell.
+* **Standards Compliant:** Codebase cleaned up to strictly follow ISO C90 standards.
 
 ## 📖 What is EtherDFS?
 EtherDFS creates a **Layer 2 (Raw Ethernet)** drive mapping for MS-DOS clients. It allows an old PC (8086 to Pentium) to mount a folder from your modern NAS as a local drive letter (e.g., `E:`), without requiring a TCP/IP stack.
